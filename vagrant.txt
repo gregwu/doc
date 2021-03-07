@@ -37,7 +37,7 @@ vagrant halt
 
 #set timezone
 -----------------------------
-sudo timedatectl set-timezone Asia/Tokyo
+sudo timedatectl set-timezone America/Los_Angeles
 
 #set firewall
 -----------------------------

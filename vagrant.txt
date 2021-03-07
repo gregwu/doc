@@ -1,0 +1,134 @@
+https://qiita.com/j-yamada/items/3efdc08b64064eaad9e1
+
+https://www.digitalocean.com/community/tutorials/how-to-install-linux-nginx-mysql-php-lemp-stack-on-centos-8
+
+
+
+Vagrantfile 
+------------------------------
+Vagrant.configure("2") do |config|
+  # CentOS8
+  config.vm.box = "generic/centos8"
+
+  config.vm.network "private_network", ip: "192.168.50.11"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = 1024
+    vb.cpus = 1
+  end
+
+  config.vm.synced_folder ".", '/var/www', :mount_options => ['dmode=777', 'fmode=777']
+end
+
+-----------------------------
+
+sudo vi /etc/selinux/config
+SELINUX=disabled
+-----------------------------
+vagrant up
+vagrant ssh
+
+sudo timedatectl set-timezone Asia/Tokyo
+
+sudo firewall-cmd --add-service=http --permanent     
+sudo firewall-cmd --add-service=https --permanent     
+sudo firewall-cmd --add-port=9000/tcp --permanent     
+sudo firewall-cmd --reload
+
+
+sudo systemctl stop firewalld
+
+
+vagrant halt
+vagrant up
+
+
+sudo dnf install -y nginx
+
+
+sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+sudo dnf install -y https://rpms.remirepo.net/enterprise/remi-release-8.rpm
+
+
+sudo dnf module disable -y php 
+sudo dnf module install -y php:remi-7.4 
+
+sudo dnf install -y php-mysqlnd php-pecl-xdebug php-intl php-zip
+
+sudo vi /etc/php.d/15-xdebug.ini
+#追加
+xdebug.default_enable = 1
+xdebug.remote_enable = On
+xdebug.remote_autostart = On
+xdebug.remote_connect_back = On
+xdebug.remote_port = 9000
+---------------------------------
+sudo vi /etc/php-fpm.d/www.conf
+listen.owner = nginx
+listen.group = nginx
+
+
+user = nginx     
+group = nginx    
+
+
+
+
+
+sudo vi /etc/nginx/conf.d/default.conf
+server {
+    listen  80;
+    server_name dev.eert.info;
+    root  /var/www/html;
+    #root  /usr/share/nginx/html;
+    index  index.php index.html index.htm;
+
+    charset utf-8;
+    access_log  /var/log/nginx/access.log  main;
+    error_log  /var/log/nginx/error.log;
+
+    location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+    }
+
+    error_page  500 502 503 504  /50x.html;
+    location = /50x.html {
+        root  /usr/share/nginx/html;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass unix:/run/php-fpm/www.sock;
+        try_files $uri =404;
+    }
+
+}
+~      
+
+-----------------------------------
+sudo systemctl restart nginx
+sudo systemctl restart php-fpm
+sudo systemctl enable nginx
+sudo systemctl enable php-fpm
+
+
+sudo dnf install -y @mysql
+
+NOT WORK sudo rm -rf /var/lib/mysql
+NOT WORK sudo  mysqld --initialize-insecure --datadir=/var/lib/mysql --user=mysql
+
+sudo systemctl restart mysqld
+sudo systemctl enable mysqld
+
+------------------------------------
+curl -sL https://rpm.nodesource.com/setup_15.x | sudo bash -
+sudo yum install -y nodejs
+sudo yum install git
+
+------------------------------------
+#remove all npm modules globally
+npm ls -gp --depth=0 | 
+awk -F/ '/node_modules/ && !/\/npm$/ {print $NF}' | 
+xargs npm -g rm
+
